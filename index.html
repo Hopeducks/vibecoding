@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사용자 맞춤형 PRD 설계 도구</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #1a365d;
+            --primary-hover: #2b6cb0;
+            --bg-color: #f7f9fa;
+            --container-bg: #ffffff;
+            --text-color: #333333;
+            --label-color: #4a5568;
+            --border-color: #e2e8f0;
+            --input-bg: #ffffff;
+            --card-header-bg: #f8fafc;
+        }
+
+        [data-theme="dark"] {
+            --primary: #60a5fa;
+            --primary-hover: #93c5fd;
+            --bg-color: #0f172a;
+            --container-bg: #1e293b;
+            --text-color: #f1f5f9;
+            --label-color: #e2e8f0;
+            --border-color: #334155;
+            --input-bg: #0f172a;
+            --card-header-bg: #162032;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--container-bg);
+            padding: 50px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+        
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* 문서 제목 및 메타 정보 */
+        .doc-header { text-align: center; margin-bottom: 40px; }
+        .doc-title-input {
+            width: 100%;
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            padding: 10px;
+            border-bottom: 2px dashed transparent;
+            transition: border-bottom 0.2s;
+            margin-bottom: 15px;
+        }
+        .doc-title-input:focus {
+            outline: none;
+            border-bottom: 2px dashed var(--primary-hover);
+        }
+        .meta-info {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .meta-info input {
+            width: 150px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        /* 노션 스타일 카드 섹션 */
+        .section-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            background: var(--container-bg);
+        }
+        .section-header {
+            background-color: var(--card-header-bg);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section-header h3 {
+            margin: 0;
+            font-size: 16px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-body { padding: 20px; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group:last-child { margin-bottom: 0; }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--label-color);
+            font-size: 14px;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-hover);
+            box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.1);
+        }
+
+        /* 체크박스 그룹 */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            cursor: pointer;
+            background: var(--card-header-bg);
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .checkbox-label input { margin-right: 6px; }
+
+        /* 다이나믹 섹션 컨트롤 */
+        .dyn-title-input {
+            border: none !important;
+            background: transparent !important;
+            font-size: 16px !important;
+            font-weight: bold !important;
+            color: var(--primary) !important;
+            padding: 0 !important;
+            width: 250px !important;
+        }
+        .dyn-title-input:focus { box-shadow: none !important; border-bottom: 1px dashed var(--primary) !important; }
+        
+        .btn-delete {
+            background: transparent;
+            color: #e53e3e;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .btn-add-section {
+            width: 100%;
+            padding: 15px;
+            background: transparent;
+            border: 2px dashed var(--border-color);
+            color: var(--label-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 30px;
+            transition: all 0.2s;
+            font-size: 15px;
+        }
+        .btn-add-section:hover {
+            border-color: var(--primary-hover);
+            color: var(--primary-hover);
+            background: var(--card-header-bg);
+        }
+
+        /* 내보내기 버튼 */
+        .action-area {
+            margin-top: 30px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 30px;
+        }
+        .btn-copy {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: background-color 0.2s;
+        }
+        .btn-copy:hover { background-color: var(--primary-hover); }
+        
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .action-btn {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .action-btn:hover { background-color: var(--primary); color: #ffffff; }
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 다크 모드</button>
+
+        <div class="doc-header">
+            <input type="text" class="doc-title-input" id="docTitle" value="프로젝트 PRD 및 요구사항 정의서" placeholder="문서 제목을 입력하세요">
+            <div class="meta-info">
+                <input type="text" id="docAuthor" placeholder="작성자 이름">
+                <input type="text" id="docDate" placeholder="YYYY-MM-DD">
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header"><h3>📌 기본 정보 및 목표</h3></div>
+            <div class="section-body">
+                <div class="form-group">
+                    <label>프로젝트 / 서비스 명칭</label>
+                    <input type="text" id="appName" placeholder="예: 직장인을 위한 AI 점심 메뉴 추천 서비스">
+                </div>
+                <div class="form-group">
+                    <label>타겟 대상 (사용자, 고객, 학생 등)</label>
+                    <input type="text" id="targetAudience" placeholder="예: 매일 점심 메뉴 고르기를 귀찮아하는 20~30대 직장인">
+                </div>
+                <div class="form-group">
+                    <label>해결하고자 하는 문제 (목표)</label>
+                    <textarea id="projectGoal" rows="2" placeholder="이 프로젝트가 왜 필요한지, 어떤 불편함을 해결해주는지 간략히 적어주세요."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header"><h3>🛠️ 기술 스택 및 연동 도구 (Tech Stack)</h3></div>
+            <div class="section-body">
+                <div class="form-group">
+                    <label>활용할 AI/에듀테크 도구 (다중 선택)</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label"><input type="checkbox" name="aiTools" value="OpenAI API"> OpenAI API</label>
+                        <label class="checkbox-label"><input type="checkbox" name="aiTools" value="Google Gemini"> Google Gemini</label>
+                        <label class="checkbox-label"><input type="checkbox" name="aiTools" value="엔트리/티처블머신"> 엔트리/티처블머신</label>
+                        <label class="checkbox-label"><input type="checkbox" name="aiTools" value="Supabase"> Supabase</label>
+                        <label class="checkbox-label"><input type="checkbox" name="aiTools" value="Vercel"> Vercel</label>
+                        <label class="checkbox-label"><input type="checkbox" name="aiTools" value="GitHub Copilot"> GitHub Copilot</label>
+                        <label class="checkbox-label"><input type="checkbox" id="checkOtherTools" onchange="toggleOtherInput()"> 기타 (직접 입력)</label>
+                    </div>
+                    <input type="text" id="otherToolsInput" placeholder="기타 도구들을 쉼표(,)로 구분하여 적어주세요." style="display: none; margin-top: 10px;">
+                </div>
+                <div class="form-group">
+                    <label>프론트엔드/백엔드 일반 기술 스택 (자유 입력)</label>
+                    <input type="text" id="techStack" placeholder="예: HTML, CSS, Vanilla JS, React, Python 등">
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header"><h3>💡 핵심 기능 및 화면 구성</h3></div>
+            <div class="section-body">
+                <textarea id="coreFeatures" rows="5" placeholder="사용자가 앱을 켜서 목적을 달성할 때까지의 흐름(Flow)이나, 반드시 들어가야 할 주요 화면과 기능들을 자유롭게 적어주세요."></textarea>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header"><h3>🎯 프로젝트 범위 (In-Scope vs Out-of-Scope)</h3></div>
+            <div class="section-body" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px;">
+                    <label>✅ 이번에 포함할 것 (In-Scope)</label>
+                    <textarea id="inScope" rows="4" placeholder="이번 버전에서 반드시 개발하고 구현할 기능"></textarea>
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <label>❌ 이번에 제외할 것 (Out-of-Scope)</label>
+                    <textarea id="outScope" rows="4" placeholder="나중에 개발하거나 이번 버전에서는 제외할 기능 (예: 결제 시스템)"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header"><h3>🤖 AI 프롬프트 제약 조건 (System Prompt)</h3></div>
+            <div class="section-body">
+                <div class="form-group">
+                    <label>AI 페르소나 (역할 부여)</label>
+                    <input type="text" id="aiPersona" placeholder="예: 당신은 10년 차 수석 PM이자 시니어 개발자입니다.">
+                </div>
+                <div class="form-group">
+                    <label>AI에게 지시할 평가 기준 및 제약 조건 (자유 입력)</label>
+                    <textarea id="aiRules" rows="3" placeholder="예: 2022 개정 교육과정을 반영해줘, 모바일 환경을 최우선으로 고려해서 설계해줘, 결과물을 표 형태로 정리해줘 등"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="dynamicSectionsContainer"></div>
+
+        <button class="btn-add-section" onclick="addSection()">+ 새 섹션 추가하기 (사용자 맞춤형)</button>
+
+        <div class="action-area">
+            <button class="btn-copy" onclick="copyToClipboard()">📋 클립보드에 복사 (AI에게 바로 붙여넣기)</button>
+            
+            <div class="button-grid">
+                <button class="action-btn" onclick="downloadFile('md')">📄 MD 다운로드</button>
+                <button class="action-btn" onclick="downloadFile('txt')">📝 TXT 다운로드</button>
+                <button class="action-btn" onclick="downloadFile('word')">📘 Word 다운로드</button>
+                <button class="action-btn" onclick="downloadFile('excel')">📗 Excel(CSV) 다운</button>
+                <button class="action-btn" id="btnPdf" onclick="generatePDF(this)">📕 PDF 다운로드</button>
+                <button class="action-btn" id="btnImg" onclick="generateImage(this)">🖼️ 이미지 다운로드</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 현재 날짜 자동 세팅
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            document.getElementById('docDate').value = `${year}-${month}-${day}`;
+        });
+
+        // 테마 전환
+        function toggleTheme() {
+            const htmlEl = document.documentElement;
+            const themeBtn = document.getElementById('themeBtn');
+            if (htmlEl.getAttribute('data-theme') === 'dark') {
+                htmlEl.removeAttribute('data-theme');
+                themeBtn.innerHTML = '🌙 다크 모드';
+            } else {
+                htmlEl.setAttribute('data-theme', 'dark');
+                themeBtn.innerHTML = '☀️ 라이트 모드';
+            }
+        }
+
+        // 기타 도구 입력창 토글
+        function toggleOtherInput() {
+            const checkbox = document.getElementById('checkOtherTools');
+            const input = document.getElementById('otherToolsInput');
+            input.style.display = checkbox.checked ? 'block' : 'none';
+            if(!checkbox.checked) input.value = '';
+        }
+
+        // 동적 섹션 추가
+        let sectionCount = 0;
+        function addSection() {
+            sectionCount++;
+            const container = document.getElementById('dynamicSectionsContainer');
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'section-card dynamic-section';
+            
+            sectionDiv.innerHTML = `
+                <div class="section-header">
+                    <h3 style="margin: 0; display: flex; align-items: center; width: 100%;">
+                        <span style="margin-right: 8px;">🔹</span>
+                        <input type="text" class="dyn-title-input" placeholder="섹션 제목 (예: 기대 효과)" value="새 섹션 ${sectionCount}">
+                    </h3>
+                    <button class="btn-delete" onclick="this.closest('.section-card').remove()">🗑️ 삭제</button>
+                </div>
+                <div class="section-body">
+                    <textarea class="dyn-content-input" rows="4" placeholder="내용을 마크다운이나 텍스트로 자유롭게 입력하세요..."></textarea>
+                </div>
+            `;
+            container.appendChild(sectionDiv);
+        }
+
+        // ----------------------------------------------------
+        // 데이터 파싱 및 다운로드 로직 (파일명 동기화 적용 완료)
+        // ----------------------------------------------------
+        
+        function getSafeFilename(name) { 
+            let safeName = name.replace(/[\/\\?%*:|"<>]/g, '-').replace(/[\r\n]+/g, '').trim();
+            return safeName === '' ? '문서' : safeName;
+        }
+        
+        const escapeCSV = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+
+        function getStructuredData() {
+            const docTitleRaw = document.getElementById('docTitle').value || 'PRD 문서';
+            const safeDocTitle = getSafeFilename(docTitleRaw);
+            
+            const author = document.getElementById('docAuthor').value || '미상';
+            const date = document.getElementById('docDate').value || '미상';
+
+            const appName = document.getElementById('appName').value || '미지정';
+            const target = document.getElementById('targetAudience').value || '미지정';
+            const goal = document.getElementById('projectGoal').value || '미지정';
+            const techStack = document.getElementById('techStack').value || '미지정';
+            const coreFeatures = document.getElementById('coreFeatures').value || '미지정';
+            const inScope = document.getElementById('inScope').value || '미지정';
+            const outScope = document.getElementById('outScope').value || '미지정';
+            const persona = document.getElementById('aiPersona').value || '숙련된 프로덕트 매니저(PM)';
+            const aiRules = document.getElementById('aiRules').value || '명확하고 구조화된 형태로 답변할 것.';
+
+            let checkedTools = Array.from(document.querySelectorAll('input[name="aiTools"]:checked')).map(cb => cb.value);
+            const otherTools = document.getElementById('otherToolsInput').value.trim();
+            if(otherTools) checkedTools.push(otherTools);
+            const toolsString = checkedTools.length > 0 ? checkedTools.join(', ') : '별도 지정 없음';
+
+            let dynamicMD = '';
+            let dynamicHTML = '';
+            let dynamicCSV = '';
+            document.querySelectorAll('.dynamic-section').forEach(sec => {
+                const title = sec.querySelector('.dyn-title-input').value || '섹션';
+                const content = sec.querySelector('.dyn-content-input').value || '';
+                
+                dynamicMD += `## 🔹 ${title}\n${content}\n\n`;
+                dynamicHTML += `<h3 style="color: #2b6cb0; margin-top:20px; font-size:16px;">🔹 ${title}</h3><div style="background:#f8fafc; padding:15px; border:1px solid #e2e8f0; white-space:pre-wrap; font-size:14px; color:#333;">${content}</div>`;
+                dynamicCSV += `${escapeCSV(title)},${escapeCSV(content)}\n`;
+            });
+
+            const mdText = 
+`# ${docTitleRaw}
+> **작성자:** ${author} | **작성일자:** ${date}
+
+## 1. 개요 및 목표
+- **프로젝트명:** ${appName}
+- **타겟 대상:** ${target}
+- **목표(해결할 문제):** ${goal}
+
+## 2. 기술 스택 및 도구
+- **AI/연동 도구:** ${toolsString}
+- **일반 기술 스택:** ${techStack}
+
+## 3. 핵심 기능 및 화면 구성
+${coreFeatures}
+
+## 4. 프로젝트 범위
+**[✅ In-Scope (포함할 것)]**
+${inScope}
+
+**[❌ Out-of-Scope (제외할 것)]**
+${outScope}
+
+${dynamicMD}
+---
+## 🤖 [SYSTEM PROMPT] AI 작업 지시사항
+당신은 **${persona}**입니다. 위 요구사항을 바탕으로 기획안/코드를 작성해 주세요.
+**[제약 조건]**
+${aiRules}`;
+
+            const htmlText = 
+`<div style="font-family: 'Malgun Gothic', sans-serif; color: #000; padding: 30px; background: #fff; width: 100%; box-sizing: border-box;">
+    <h1 style="color: #1a365d; text-align: center; border-bottom: 2px solid #1a365d; padding-bottom: 15px; margin-bottom: 10px;">${docTitleRaw}</h1>
+    <div style="text-align: center; color: #4a5568; font-size: 14px; margin-bottom: 30px;">
+        <strong>작성자:</strong> ${author} &nbsp;|&nbsp; <strong>작성일자:</strong> ${date}
+    </div>
+    
+    <h3 style="color: #2b6cb0; margin-top:20px; font-size:16px;">1. 개요 및 목표</h3>
+    <ul style="font-size:14px; color:#333; line-height:1.8;">
+        <li><strong>프로젝트명:</strong> ${appName}</li>
+        <li><strong>타겟 대상:</strong> ${target}</li>
+        <li><strong>목표:</strong> ${goal}</li>
+    </ul>
+
+    <h3 style="color: #2b6cb0; margin-top:20px; font-size:16px;">2. 기술 스택 및 도구</h3>
+    <ul style="font-size:14px; color:#333; line-height:1.8;">
+        <li><strong>AI/연동 도구:</strong> ${toolsString}</li>
+        <li><strong>기술 스택:</strong> ${techStack}</li>
+    </ul>
+
+    <h3 style="color: #2b6cb0; margin-top:20px; font-size:16px;">3. 핵심 기능 및 화면 구성</h3>
+    <div style="background:#f8fafc; padding:15px; border:1px solid #e2e8f0; white-space:pre-wrap; font-size:14px; color:#333;">${coreFeatures}</div>
+
+    <h3 style="color: #2b6cb0; margin-top:20px; font-size:16px;">4. 프로젝트 범위 (Scope)</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size:14px;">
+        <tr>
+            <th style="border: 1px solid #e2e8f0; padding: 10px; background: #f0fdf4; width: 50%; color:#000;">✅ In-Scope</th>
+            <th style="border: 1px solid #e2e8f0; padding: 10px; background: #fef2f2; width: 50%; color:#000;">❌ Out-of-Scope</th>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #e2e8f0; padding: 10px; vertical-align: top; white-space:pre-wrap; color:#333;">${inScope}</td>
+            <td style="border: 1px solid #e2e8f0; padding: 10px; vertical-align: top; white-space:pre-wrap; color:#333;">${outScope}</td>
+        </tr>
+    </table>
+
+    ${dynamicHTML}
+
+    <hr style="margin-top:40px; border: 1px solid #e2e8f0;">
+    <h3 style="color: #2b6cb0; font-size:16px;">🤖 [System Prompt] AI 제약 조건</h3>
+    <ul style="font-size:14px; color:#333; line-height:1.8; background:#f1f5f9; padding:15px 15px 15px 35px; border-radius:6px;">
+        <li><strong>페르소나:</strong> ${persona}</li>
+        <li><strong>제약 조건:</strong> ${aiRules}</li>
+    </ul>
+</div>`;
+
+            const csvText = 
+`구분,내용\n` +
+`문서 제목,${escapeCSV(docTitleRaw)}\n` +
+`작성자,${escapeCSV(author)}\n` +
+`작성일자,${escapeCSV(date)}\n` +
+`프로젝트명,${escapeCSV(appName)}\n` +
+`타겟 대상,${escapeCSV(target)}\n` +
+`목표,${escapeCSV(goal)}\n` +
+`활용 도구,${escapeCSV(toolsString)}\n` +
+`기술 스택,${escapeCSV(techStack)}\n` +
+`핵심 기능,${escapeCSV(coreFeatures)}\n` +
+`In-Scope,${escapeCSV(inScope)}\n` +
+`Out-of-Scope,${escapeCSV(outScope)}\n` +
+`AI 페르소나,${escapeCSV(persona)}\n` +
+`AI 제약조건,${escapeCSV(aiRules)}\n` +
+dynamicCSV;
+
+            return { safeDocTitle, mdText, htmlText, csvText };
+        }
+
+        // 클립보드 복사
+        function copyToClipboard() {
+            const data = getStructuredData();
+            navigator.clipboard.writeText(data.mdText).then(() => {
+                alert('✅ 내용이 복사되었습니다!\nAI 채팅창에 바로 붙여넣기(Ctrl+V) 하세요.');
+            }).catch(() => {
+                alert('복사 실패. 브라우저 권한을 확인해주세요.');
+            });
+        }
+
+        // 일반 텍스트 및 문서 다운로드
+        function downloadFile(type) {
+            const data = getStructuredData();
+            let content, filename, mimeType;
+            let BOM = '\uFEFF'; 
+
+            if (type === 'md' || type === 'txt') {
+                content = data.mdText;
+                filename = `${data.safeDocTitle}.${type}`;
+                mimeType = 'text/plain;charset=utf-8;';
+            } else if (type === 'word') {
+                content = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>${data.safeDocTitle}</title></head><body style="background-color: white; color: black;">${data.htmlText}</body></html>`;
+                filename = `${data.safeDocTitle}.doc`;
+                mimeType = 'application/msword;charset=utf-8;';
+            } else if (type === 'excel') {
+                content = BOM + data.csvText;
+                filename = `${data.safeDocTitle}.csv`;
+                mimeType = 'text/csv;charset=utf-8;';
+            }
+
+            const blob = new Blob([content], { type: mimeType });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        // ----------------------------------------------------
+        // 백지 현상 해결을 위한 [1px 투명 박스 렌더링] 핵심 로직
+        // ----------------------------------------------------
+        function createSafeRenderBox(htmlContent) {
+            // 1. 화면 한구석에 존재하지만 크기가 1x1인 보이지 않는 박스 생성
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'fixed';
+            wrapper.style.top = '0';
+            wrapper.style.left = '0';
+            wrapper.style.width = '1px';
+            wrapper.style.height = '1px';
+            wrapper.style.overflow = 'hidden'; // 내용이 삐져나오지 않도록 숨김
+            wrapper.style.zIndex = '-9999';
+            wrapper.style.pointerEvents = 'none';
+
+            // 2. 실제 렌더링될 대상 (정상 크기로 생성되어 브라우저가 정상적으로 그림)
+            const targetDiv = document.createElement('div');
+            targetDiv.style.width = '800px';
+            targetDiv.style.backgroundColor = '#ffffff'; 
+            targetDiv.style.color = '#000000';
+            targetDiv.innerHTML = htmlContent;
+
+            wrapper.appendChild(targetDiv);
+            document.body.appendChild(wrapper);
+            
+            return { wrapper, targetDiv };
+        }
+
+        function generatePDF(btnElement) {
+            const originalText = btnElement.innerHTML;
+            btnElement.innerHTML = "🔄 변환 중...";
+            btnElement.disabled = true;
+
+            const data = getStructuredData();
+            const renderBox = createSafeRenderBox(data.htmlText);
+            
+            const opt = {
+                margin: 15,
+                filename: `${data.safeDocTitle}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(renderBox.targetDiv).save().then(() => {
+                document.body.removeChild(renderBox.wrapper); // 작업 완료 후 임시 박스 삭제
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+            }).catch(err => {
+                alert('PDF 생성 중 오류가 발생했습니다.');
+                document.body.removeChild(renderBox.wrapper);
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+            });
+        }
+
+        function generateImage(btnElement) {
+            const originalText = btnElement.innerHTML;
+            btnElement.innerHTML = "🔄 변환 중...";
+            btnElement.disabled = true;
+
+            const data = getStructuredData();
+            const renderBox = createSafeRenderBox(data.htmlText);
+
+            html2canvas(renderBox.targetDiv, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${data.safeDocTitle}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                document.body.removeChild(renderBox.wrapper);
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+            }).catch(err => {
+                alert('이미지 생성 중 오류가 발생했습니다.');
+                document.body.removeChild(renderBox.wrapper);
+                btnElement.innerHTML = originalText;
+                btnElement.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
